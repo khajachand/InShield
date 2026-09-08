@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import shutil
 import uuid
+import re
 from contextvars import ContextVar
 
 try:
@@ -60,17 +61,6 @@ app = FastAPI(
     description="Investment Portfolio Intelligence & Risk Monitoring",
     version="0.5.0-auth",
 )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    # Supports the deployed Render frontend in addition to local LAN development.
-    allow_origin_regex=r"^(https://inshield-frontend\.onrender\.com|http://192\.168\.\d+\.\d+:(5173|8001))$",
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
 
 @app.middleware("http")
 async def security_headers(request, call_next):
@@ -272,6 +262,19 @@ async def authentication_middleware(request, call_next):
         return await call_next(request)
     finally:
         CURRENT_USER_DB.reset(t2); CURRENT_USER_ID.reset(t1)
+
+
+# CORS must be registered after authentication middleware so it becomes
+# the outermost middleware and adds CORS headers even to 401 responses.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    # Supports the deployed Render frontend in addition to local LAN development.
+    allow_origin_regex=r"^(https://inshield-frontend\.onrender\.com|http://192\.168\.\d+\.\d+:(5173|8001))$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 class AuthCredentials(BaseModel):
